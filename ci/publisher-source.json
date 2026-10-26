@@ -1,0 +1,5 @@
+{
+  "repository": "https://github.com/devline-ide/devline-backend.git",
+  "commit": "2cb57ce02dc5f56f6f8957836d3e6446583d82ca",
+  "path": "scripts/publish-extension.mjs"
+}

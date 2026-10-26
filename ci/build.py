@@ -79,11 +79,20 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
         return
     with machine_build_lock():
         ide = ide_override.resolve(strict=True) if ide_override else repository / "build/ide-source"
+        source_directory = repository
         if ide_override is None:
             if ide.exists():
                 # Never reset an old worker checkout; callers use a fresh checkout per job.
                 raise RuntimeError(f"Build workspace already exists; use a fresh job directory: {ide}")
-            run(["git", "clone", "--no-checkout", declaration["ideRepository"], str(ide)], repository)
+            mirror_value = os.environ.get("DEVLINE_IDE_MIRROR", "")
+            mirror = Path(mirror_value) if mirror_value else None
+            if mirror is not None and (mirror / ".git").exists():
+                # Read Git objects only; checkout still uses the declared commit,
+                # never the mirror's uncommitted working tree or build output.
+                run(["git", "clone", "--shared", "--no-checkout", str(mirror), str(ide)], repository)
+                run(["git", "remote", "set-url", "origin", declaration["ideRepository"]], ide)
+            else:
+                run(["git", "clone", "--filter=blob:none", "--no-checkout", declaration["ideRepository"], str(ide)], repository)
             run(["git", "checkout", "--detach", declaration["ideCommit"]], ide)
             run(["git", "submodule", "update", "--init", "--recursive"], ide)
             npm = ["cmd", "/d", "/c", "npm"] if os.name == "nt" else ["npm"]
@@ -91,8 +100,13 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
             peers = repository / "build/extension-peers"
             peers.mkdir(parents=True, exist_ok=False)
             sys.path.insert(0, str(ide / "tools/extensions"))
-            from workspace import bootstrap, link
-            link(peers / declaration["module"], repository)
+            from workspace import bootstrap
+            source_directory = peers / declaration["module"]
+            # Vite resolves real source paths. Keep the candidate beside its peer
+            # sources/shared UI, rather than linking to the Actions checkout.
+            revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip()
+            run(["git", "clone", "--no-hardlinks", "--no-checkout", str(repository), str(source_directory)], repository)
+            run(["git", "checkout", "--detach", revision], source_directory)
             # The current extension is the candidate; all its peers stay locked.
             bootstrap(ide, peers, locked=False)
         wrapper = ["cmd", "/d", "/c", "gradlew.bat"] if os.name == "nt" else ["sh", "gradlew"]
@@ -102,7 +116,7 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
         if output.exists():
             raise RuntimeError("Output exists; use a fresh job rather than overwriting a release candidate")
         output.mkdir()
-        artifact_directory = repository / ("build/libs" if task == "jar" else "build/extension")
+        artifact_directory = source_directory / ("build/libs" if task == "jar" else "build/extension")
         artifacts = sorted(artifact_directory.glob("*.jar" if task == "jar" else "*.dlextension"))
         if len(artifacts) != 1:
             raise RuntimeError(f"Expected one freshly built artifact, got {len(artifacts)}")
@@ -125,7 +139,15 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
                         raise RuntimeError(f"Missing declared library: {library}")
                 metadata["apiVersion"] = descriptor["apiVersion"]
                 metadata["compatibility"] = descriptor.get("compatibility")
-        shutil.copy2(artifact, output / artifact.name)
+        artifact_name = "component.jar" if task == "jar" else "extension.dlextension"
+        shutil.copy2(artifact, output / artifact_name)
+        metadata["artifact"] = artifact_name
+        if task != "jar":
+            notes_path = repository / "release-notes.json"
+            notes = json.loads(notes_path.read_text(encoding="utf-8")) if notes_path.exists() else {}
+            publication = {key: metadata[key] for key in ("extensionId", "version", "channel", "platform")}
+            publication["releaseNotes"] = notes
+            (output / "publication.json").write_text(json.dumps(publication, indent=2) + "\n", encoding="utf-8")
         (output / "release.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(metadata))
 

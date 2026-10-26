@@ -14,11 +14,10 @@ audio engine and Deck tools remain IDE-owned dependencies.
 Build a candidate using Python 3.11+, JDK 25, Node 22+ and the existing IDE checkout:
 
 ```sh
-python ci/build.py --repository . --ide-root ../ozl.devline.ide
+python ci/build.py --repository . --ide-root ../../ozl.devline.ide
 ```
 
-Adjust `--ide-root` to the actual IDE directory (normally `../../ozl.devline.ide`
-when invoked inside this repository). CI uses an isolated checkout of the exact
+Adjust `--ide-root` if the IDE is elsewhere. CI uses an isolated checkout of the exact
 `extension-build.json` IDE commit and its locked peer extensions. It requires the
 build account's read access to private `devline-ide` repositories. Never use the
 running user's distribution as a build directory.
@@ -43,3 +42,7 @@ the host/UI contract supports independently replacing it.
 `published: false`. CI artifacts are short-lived candidates, not end-user delivery
 URLs. Backend approval/public delivery and repo/tag-bound CI authentication are
 separate; never hand private GitHub credentials or private download URLs to users.
+Publishing uses short-lived Actions OIDC and is disabled unless the repository
+variable `DEVLINE_MARKETPLACE_PUBLISH` is explicitly `true`, the ref is a version
+tag and the backend already binds this exact repository/workflow to an approved
+publisher. A successful submission still follows backend moderation policy.

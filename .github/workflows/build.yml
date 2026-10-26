@@ -17,6 +17,7 @@ on:
           - macosx-arm64
 permissions:
   contents: read
+  id-token: write
 concurrency:
   group: extension-${{ github.ref }}-${{ inputs.platform || 'windows-amd64' }}
   cancel-in-progress: false
@@ -24,6 +25,8 @@ jobs:
   build:
     runs-on: [self-hosted, devline-extension, "${{ inputs.platform || 'windows-amd64' }}"]
     timeout-minutes: 90
+    env:
+      DEVLINE_IDE_MIRROR: ${{ vars.DEVLINE_IDE_MIRROR }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,3 +41,6 @@ jobs:
           path: release-output/*
           retention-days: 3
           if-no-files-found: error
+      - name: Submit versioned archive to the configured marketplace publisher
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.DEVLINE_MARKETPLACE_PUBLISH == 'true' && true }}
+        run: node ci/publish.mjs release-output/publication.json release-output/extension.dlextension
