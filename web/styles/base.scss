@@ -1,0 +1,4 @@
+html, body, #app { margin: 0; width: 100%; height: 100%; }
+body { background: var(--color-editor-bg); color: var(--color-text); font: var(--ui-font-size)/var(--ui-line-height) var(--ui-font-family); user-select: none; }
+*, *::before, *::after { box-sizing: border-box; }
+:where(input, textarea, pre, code, .is-selectable, .is-selectable *) { user-select: text; }

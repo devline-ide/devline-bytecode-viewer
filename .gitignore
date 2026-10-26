@@ -1,0 +1,17 @@
+
+# Generated output and machine-local state
+.gradle/
+.kotlin/
+**/build/
+**/node_modules/
+__pycache__/
+*.pyc
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+.env
+.env.*
+*.pem
+*.key
+release-output/
