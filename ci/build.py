@@ -170,6 +170,9 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
             prepare_submodules(ide, mirror if mirror is not None and (mirror / ".git").exists() else None)
             npm = ["cmd", "/d", "/c", "npm"] if os.name == "nt" else ["npm"]
             run(npm + ["ci", "--no-audit", "--no-fund"], ide)
+            # Shared UI exports reference these workspace packages' dist entries.
+            for workspace in ("@devline/animgraph", "@devline/game-render-web"):
+                run(npm + ["run", "build", "--workspace", workspace], ide)
             peers = repository / "build/extension-peers"
             peers.mkdir(parents=True, exist_ok=False)
             sys.path.insert(0, str(ide / "tools/extensions"))
