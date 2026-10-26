@@ -25,6 +25,26 @@ def digest(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def prepare_submodules(checkout: Path, mirror: Path | None) -> None:
+    declaration = checkout / ".gitmodules"
+    if not declaration.is_file():
+        return
+    output = subprocess.check_output(["git", "config", "--file", str(declaration),
+                                      "--get-regexp", r"^submodule\..*\.path$"], cwd=checkout, text=True)
+    for line in output.splitlines():
+        key, relative = line.split(None, 1)
+        source = mirror / relative if mirror is not None else None
+        if source is not None and (source / ".git").exists():
+            # Git's local clone reads committed objects, including the exact
+            # gitlink revision; it never copies a dirty submodule working tree.
+            name = key[len("submodule."):-len(".path")]
+            run(["git", "config", f"submodule.{name}.url", str(source.resolve())], checkout)
+            run(["git", "-c", "protocol.file.allow=always", "submodule", "update", "--init", "--", relative], checkout)
+            prepare_submodules(checkout / relative, source)
+        else:
+            run(["git", "submodule", "update", "--init", "--recursive", "--", relative], checkout)
+
+
 @contextmanager
 def machine_build_lock():
     # One JVM/native build at a time across this user's seven repository workers.
@@ -102,7 +122,7 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
                 run(["git", "clone", "--filter=blob:none", "--no-checkout", declaration["ideRepository"], str(ide)], repository)
             run(["git", "sparse-checkout", "set", "--no-cone", "/*", "!/docs/audits/"], ide)
             run(["git", "checkout", "--detach", declaration["ideCommit"]], ide)
-            run(["git", "submodule", "update", "--init", "--recursive"], ide)
+            prepare_submodules(ide, mirror if mirror is not None and (mirror / ".git").exists() else None)
             npm = ["cmd", "/d", "/c", "npm"] if os.name == "nt" else ["npm"]
             run(npm + ["ci", "--no-audit", "--no-fund"], ide)
             peers = repository / "build/extension-peers"
