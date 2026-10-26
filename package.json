@@ -1,0 +1,8 @@
+{
+  "name": "@devline/bytecode-viewer-source",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@devline/extension-devkit": "file:vendor/devline-extension-devkit-0.1.0.tgz"
+  }
+}

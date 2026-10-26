@@ -51,8 +51,8 @@ def extension_sdk_projects(ide: Path, extensions: Path, module: str) -> list[str
 
     The full IDE includes unfinished worktree-only product modules. Independent
     extensions must not require those unrelated product projects to exist. Keep
-    the original source/build scripts for every actual SDK dependency. The only
-    desktop contribution needed here is its existing npm preparation task.
+    the original source/build scripts for every actual SDK dependency. Shared
+    frontend preparation belongs to the extension SDK, not to the IDE shell.
     """
     selected: set[str] = set()
     pending = [module]
@@ -62,9 +62,10 @@ def extension_sdk_projects(ide: Path, extensions: Path, module: str) -> list[str
             continue
         selected.add(current)
         if current == "devline-desktop":
-            continue
+            raise RuntimeError("The extension SDK graph still depends on the IDE desktop; remove its shell build dependency")
         external = extensions / current / "build.gradle.kts"
-        script = external if external.is_file() else ide / current / "build.gradle.kts"
+        audio_script = ide / "platform/audio" / current / "build.gradle.kts"
+        script = external if external.is_file() else audio_script if audio_script.is_file() else ide / current / "build.gradle.kts"
         if not script.is_file():
             raise RuntimeError(f"The pinned IDE lacks required SDK source: {current}")
         source = script.read_text(encoding="utf-8")
@@ -79,13 +80,6 @@ def extension_sdk_projects(ide: Path, extensions: Path, module: str) -> list[str
         return 'include(' + ', '.join(json.dumps(name) for name in names) + ')' if names else ''
 
     settings = re.sub(r'(?m)^include\(([^\n]*)\)', included, settings)
-    if "devline-desktop" in selected:
-        desktop_source = (ide / "devline-desktop/build.gradle.kts").read_text(encoding="utf-8")
-        start = desktop_source.index("val webDirectory =")
-        end = desktop_source.index("val animGraphDirectory =", start)
-        # Reuse the exact committed webInstall implementation, not a no-op task.
-        (ide / "devline-desktop/extension-sdk.gradle.kts").write_text(desktop_source[start:end], encoding="utf-8")
-        settings += '\nproject(":devline-desktop").buildFileName = "extension-sdk.gradle.kts"\n'
     settings_path.write_text(settings, encoding="utf-8")
     return sorted(selected)
 
@@ -120,6 +114,31 @@ def machine_build_lock():
                 fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
+@contextmanager
+def short_build_workspace(enabled: bool):
+    if not enabled:
+        yield None
+        return
+    directory = Path(tempfile.mkdtemp(prefix="dl-ci-")).resolve()
+    parent = Path(tempfile.gettempdir()).resolve()
+    if directory.parent != parent or not directory.name.startswith("dl-ci-"):
+        raise RuntimeError("Unexpected build workspace")
+    try:
+        if shutil.disk_usage(directory).free < 4 * 1024 ** 3:
+            raise RuntimeError("Build workspace needs at least 4 GiB free")
+        yield directory
+    except BaseException:
+        print(f"Build diagnostics retained at {directory}", file=sys.stderr)
+        raise
+    else:
+        if directory.parent != parent or directory.resolve() != directory or directory.is_symlink():
+            raise RuntimeError("Build workspace changed before cleanup")
+        try:
+            shutil.rmtree(directory)
+        except OSError:
+            print(f"Build succeeded; workspace cleanup incomplete at {directory}", file=sys.stderr)
+
+
 def native_platform() -> str:
     system = {"Windows": "windows", "Linux": "linux", "Darwin": "macosx"}[platform.system()]
     architecture = {"AMD64": "amd64", "x86_64": "amd64", "aarch64": "arm64", "arm64": "arm64"}[platform.machine()]
@@ -135,6 +154,10 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
         os.environ[f"GIT_CONFIG_VALUE_{config_index}"] = "true"
         os.environ["GIT_CONFIG_COUNT"] = str(config_index + 1)
     declaration = json.loads((repository / "extension-build.json").read_text(encoding="utf-8"))
+    verification_tasks = declaration.get("verificationTasks", [])
+    if (not isinstance(verification_tasks, list) or len(verification_tasks) > 8 or
+            any(not isinstance(task, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", task) for task in verification_tasks)):
+        raise RuntimeError("Expected at most eight local verification task names")
     actual_platform = native_platform()
     if actual_platform not in declaration["buildPlatforms"]:
         raise RuntimeError(f"This extension does not yet support builds on {actual_platform}")
@@ -149,8 +172,11 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
         print(json.dumps({"id": manifest["id"], "sourceVersion": manifest["version"],
                           "buildPlatform": actual_platform, "distribution": declaration["distribution"]}))
         return
-    with machine_build_lock():
-        ide = ide_override.resolve(strict=True) if ide_override else repository / "build/ide-source"
+    # MSBuild's native file tracker still needs short generated paths on Windows.
+    # Keep this fresh SDK/peer tree owned by the job; never reuse the user's IDE.
+    short_windows = ide_override is None and os.name == "nt"
+    with machine_build_lock(), short_build_workspace(short_windows) as native_root:
+        ide = ide_override.resolve(strict=True) if ide_override else Path(native_root) / "sdk" if native_root else repository / "build/ide-source"
         source_directory = repository
         sdk_projects = None
         if ide_override is None:
@@ -169,12 +195,7 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
             run(["git", "sparse-checkout", "set", "--no-cone", "/*", "!/docs/audits/"], ide)
             run(["git", "checkout", "--detach", declaration["ideCommit"]], ide)
             prepare_submodules(ide, mirror if mirror is not None and (mirror / ".git").exists() else None)
-            npm = ["cmd", "/d", "/c", "npm"] if os.name == "nt" else ["npm"]
-            run(npm + ["ci", "--no-audit", "--no-fund"], ide)
-            # Shared UI exports reference these workspace packages' dist entries.
-            for workspace in ("@devline/animgraph", "@devline/game-render-web"):
-                run(npm + ["run", "build", "--workspace", workspace], ide)
-            peers = repository / "build/extension-peers"
+            peers = Path(native_root) / "peers" if native_root else repository / "build/extension-peers"
             peers.mkdir(parents=True, exist_ok=False)
             sys.path.insert(0, str(ide / "tools/extensions"))
             from workspace import bootstrap
@@ -190,6 +211,7 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
         wrapper = ["cmd", "/d", "/c", "gradlew.bat"] if os.name == "nt" else ["sh", "gradlew"]
         task = "jar" if declaration["distribution"] == "builtin" else "extensionArchive"
         gradle_arguments = [f":{declaration['module']}:{task}", "--no-daemon", "--max-workers=2"]
+        gradle_arguments += [f":{declaration['module']}:{name}" for name in verification_tasks]
         if ide_override is None:
             gradle_arguments.append(f"-PdevlineExtensionsDir={peers.resolve()}")
         run(wrapper + gradle_arguments, ide)
@@ -212,6 +234,8 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
                     "published": False}
         if sdk_projects is not None:
             metadata.update(buildMode="extension-sdk-source", sdkProjects=sdk_projects)
+        if verification_tasks:
+            metadata["verificationTasks"] = verification_tasks
         if task != "jar":
             with zipfile.ZipFile(artifact) as archive:
                 descriptor = json.loads(archive.read("extension.json"))

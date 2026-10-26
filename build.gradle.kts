@@ -25,11 +25,18 @@ tasks.processResources {
     from("src/extension/extension.json") { rename { "bytecode-extension.json" } }
 }
 
+val panelInstall = tasks.register<Exec>("panelInstall") {
+    dependsOn(":devline-ide-extensions:frontendInstall")
+    workingDir(projectDir)
+    commandLine("node", rootProject.file("tools/extensions/frontend.mjs").absolutePath, "extension", projectDir.absolutePath)
+    inputs.files("package.json", "package-lock.json")
+    inputs.dir("vendor")
+    outputs.dir(layout.projectDirectory.dir("node_modules/@devline/extension-devkit"))
+}
 val panelBuild = tasks.register<Exec>("panelBuild") {
-    dependsOn(":devline-desktop:webInstall")
+    dependsOn(panelInstall)
     workingDir(rootProject.projectDir)
-    commandLine("node", "node_modules/vite/bin/vite.js", "build", "--config", project.file("web/vite.config.ts").absolutePath,
-        "--outDir", layout.buildDirectory.dir("panel").get().asFile.absolutePath)
+    commandLine("node", rootProject.file("tools/extensions/frontend.mjs").absolutePath, "panel", projectDir.absolutePath)
     inputs.dir("web")
     inputs.dir(rootProject.file("devline-ui-web/src"))
     outputs.dir(layout.buildDirectory.dir("panel"))

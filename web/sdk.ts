@@ -1,15 +1,9 @@
-export interface Context {
-  locale: string; theme: string; visible: boolean; colors?: Record<string, string>; effects?: Record<string, string>
-  projectFile?: string; project?: { projectFile?: string }; selectedPath?: string; selectionRevision?: number; documentPath?: string
-  selection?: { path?: string }; document?: { path: string }
-  view?: { id: string; location: 'dock' | 'sidebar' | 'settings'; readOnly?: boolean; settingsScope?: 'user' | 'workspace' }
+import type { DevLineWebviewContext, DevLineWebviewSdk } from '@devline/extension-devkit'
+export interface Context extends DevLineWebviewContext {
+  project?: { projectFile?: string }; selection?: { path?: string }; documentPath?: string
 }
-interface SDK {
-  ready: Promise<unknown>
-  getContext(): Context
-  onContextChanged(callback: (context: Context) => void): () => void
-  call<T>(method: string, params?: Record<string, unknown>): Promise<T>
-}
+type SDK = DevLineWebviewSdk<Context>
+
 declare global { interface Window { devline: SDK } }
 export const sdk = window.devline
 export const projectOf = (context: Context) => context.projectFile ?? context.project?.projectFile

@@ -2,7 +2,13 @@
 
 Private independent source repository for `devline.bytecode`. Source provenance and
 the original file hashes are in `migration-source.json`. The original IDE history
-has not been rewritten. Extension source version: `0.1.1`.
+has not been rewritten. Extension source version: `0.1.2`.
+
+The release declaration requires `bytecodeReaderCheck`, `bytecodeRuntimeCheck`,
+`bytecodeOwnershipWorkerCheck` and `bytecodeReleaseCheck`. The last check loads
+the exact archive through the host parser/provider loader, verifies capability
+rejection on an older host and produces PHP instructions without executing PHP.
+No provider classes are supplied by the test parent classpath.
 
 ## Local development
 
@@ -47,3 +53,19 @@ Publishing uses short-lived Actions OIDC and is disabled unless the repository
 variable `DEVLINE_MARKETPLACE_PUBLISH` is explicitly `true`, the ref is a version
 tag and the backend already binds this exact repository/workflow to an approved
 publisher. A successful submission still follows backend moderation policy.
+
+## Web frontend dependency
+
+The frontend uses the versioned `@devline/extension-devkit` package in `vendor/`.
+`npm ci` verifies/installs its lockfile integrity; `vendor/extension-devkit.json`
+records SHA-256 and the owning SDK source revision. No shell source, shell
+TypeScript config or shell directory link is needed. The host still injects the
+runtime bridge; the devkit exports types and build configuration only.
+
+After cloning the SDK checkout, run its documented
+`python tools/extensions/workspace.py bootstrap --extensions-root ../ozl.devline.extensions --locked`.
+Then `node <sdk>/tools/extensions/frontend.mjs panel <this-repository>` type-checks
+and builds the panel without configuring the whole IDE. Gradle's `panelBuild`
+uses that same entry point. Shared UI/Deck sources and shared frontend tools are
+still supplied by the pinned SDK in this migration stage. This does not publish
+or replace an existing immutable extension release.

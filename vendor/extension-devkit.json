@@ -1,0 +1,15 @@
+{
+  "package": "@devline/extension-devkit",
+  "version": "0.1.0",
+  "sha256": "95fb22393e1aa56dd44708ab5a58b45e5583bc63ca579fd003dedfcdd67c16c6",
+  "integrity": "sha512-y28PS1wuizv7poyVnfJdYV7o/B3/KPKKlGvPtSQhjLQn8SePrF74P76d/wR+7T/3cBVv/itOoKuywirCtskY9g==",
+  "sourceRepository": "https://github.com/devline-ide/ozl.devline.ide.git",
+  "sourceCommit": "5d1c942e21cfbee07e26a2977ec89d1c8ef92bf8",
+  "sourceDirectory": "devline-ide-extensions/web-devkit",
+  "sourceFiles": {
+    "package.json": "2f4062f68286a6e1c3d309a93e72502081503d33f6b0af16866f2e30c0bfc48c",
+    "tsconfig.json": "9fc35bb3150e4782d6501a4a59ae2689cc5a387079f99b367011c056b2f5afd6",
+    "index.d.ts": "a22a4d2b34a05e75c561b2c478bf4f4f099304fb3ea0de7711a55b0d20c702b4",
+    "README.md": "177f2a1b4bfe1ebe8ea0d5a34e273bda124e39b11d9c4b46c8c6453dac8b44bf"
+  }
+}
