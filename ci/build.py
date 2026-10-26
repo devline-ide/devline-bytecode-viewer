@@ -46,7 +46,7 @@ def prepare_submodules(checkout: Path, mirror: Path | None) -> None:
             run(["git", "submodule", "update", "--init", "--recursive", "--", relative], checkout)
 
 
-def extension_sdk_projects(ide: Path, module: str) -> list[str]:
+def extension_sdk_projects(ide: Path, extensions: Path, module: str) -> list[str]:
     """Configure only the extension's source SDK dependency graph in the owned CI checkout.
 
     The full IDE includes unfinished worktree-only product modules. Independent
@@ -63,7 +63,8 @@ def extension_sdk_projects(ide: Path, module: str) -> list[str]:
         selected.add(current)
         if current == "devline-desktop":
             continue
-        script = ide / current / "build.gradle.kts"
+        external = extensions / current / "build.gradle.kts"
+        script = external if external.is_file() else ide / current / "build.gradle.kts"
         if not script.is_file():
             raise RuntimeError(f"The pinned IDE lacks required SDK source: {current}")
         source = script.read_text(encoding="utf-8")
@@ -185,10 +186,13 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
             run(["git", "checkout", "--detach", revision], source_directory)
             # The current extension is the candidate; all its peers stay locked.
             bootstrap(ide, peers, locked=False)
-            sdk_projects = extension_sdk_projects(ide, declaration["module"])
+            sdk_projects = extension_sdk_projects(ide, peers, declaration["module"])
         wrapper = ["cmd", "/d", "/c", "gradlew.bat"] if os.name == "nt" else ["sh", "gradlew"]
         task = "jar" if declaration["distribution"] == "builtin" else "extensionArchive"
-        run(wrapper + [f":{declaration['module']}:{task}", "--no-daemon", "--max-workers=2"], ide)
+        gradle_arguments = [f":{declaration['module']}:{task}", "--no-daemon", "--max-workers=2"]
+        if ide_override is None:
+            gradle_arguments.append(f"-PdevlineExtensionsDir={peers.resolve()}")
+        run(wrapper + gradle_arguments, ide)
         output = repository / "release-output"
         if output.exists():
             raise RuntimeError("Output exists; use a fresh job rather than overwriting a release candidate")

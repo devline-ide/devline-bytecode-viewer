@@ -8,7 +8,8 @@ has not been rewritten. Extension source version: `0.1.1`.
 
 Keep this checkout at `../ozl.devline.extensions/devline-bytecode-viewer` beside the IDE. From the
 IDE run `python tools/extensions/workspace.py bind --extensions-root ../ozl.devline.extensions`.
-Gradle/Vite/test paths remain directory links to these sources. Shared host/UI,
+Gradle reads this external project directly; the IDE root contains no extension
+folders or links. Only shared SDK/frontend dependencies are linked here. Shared host/UI,
 audio engine and Deck tools remain IDE-owned dependencies.
 
 Build a candidate using Python 3.11+, JDK 25, Node 22+ and the existing IDE checkout:

@@ -28,7 +28,7 @@ tasks.processResources {
 val panelBuild = tasks.register<Exec>("panelBuild") {
     dependsOn(":devline-desktop:webInstall")
     workingDir(rootProject.projectDir)
-    commandLine("node", "node_modules/vite/bin/vite.js", "build", "--config", "devline-bytecode-viewer/web/vite.config.ts",
+    commandLine("node", "node_modules/vite/bin/vite.js", "build", "--config", project.file("web/vite.config.ts").absolutePath,
         "--outDir", layout.buildDirectory.dir("panel").get().asFile.absolutePath)
     inputs.dir("web")
     inputs.dir(rootProject.file("devline-ui-web/src"))
