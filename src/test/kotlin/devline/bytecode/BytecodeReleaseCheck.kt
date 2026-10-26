@@ -70,13 +70,23 @@ fun main(args: Array<String>) {
             } while (status["state"].asString == "preparing")
             check(status["state"].asString == "ready") { "Archive inspection failed: $status" }
             val classes = call("classes", params).getAsJsonArray("items")
-            val method = classes.firstNotNullOf { row ->
+            var mappedSource = false
+            val instructions = classes.flatMap { row ->
                 val details = params.deepCopy().apply { addProperty("classIndex", row.asJsonObject["index"].asInt) }
-                call("classInfo", details).getAsJsonArray("methods").firstOrNull { it.asJsonObject["name"].asString == "sum" }
-                    ?.let { details.apply { addProperty("methodIndex", it.asJsonObject["index"].asInt) } }
+                val info = call("classInfo", details)
+                if (info["sourcePath"]?.asString != "src/Sum.php") emptyList() else {
+                    mappedSource = true
+                    info.getAsJsonArray("methods").flatMap { method ->
+                        call("method", details.deepCopy().apply { addProperty("methodIndex", method.asJsonObject["index"].asInt) })
+                            .getAsJsonArray("instructions").toList()
+                    }
+                }
             }
-            val instructions = call("method", method).getAsJsonArray("instructions")
-            check(instructions.any { it.asJsonObject["opcode"].asInt >= 0 })
+            check(mappedSource && instructions.any { it.asJsonObject["opcode"].asInt >= 0 })
+            check(instructions.any { item -> item.asJsonObject.let {
+                it["mnemonic"].asString in setOf("LADD", "IADD", "DADD") ||
+                    it["operand"].asString.contains("addExact") || it["operand"].asString.contains("plus")
+            } }) { "Compiled PHP addition was missing from the archive instruction listing" }
             check(!Files.exists(marker)) { "Archive inspection executed PHP" }
             val firstView = registry.openWebview(id, "viewer", descriptor.toString())
             val lastView = registry.openWebview(id, "viewer", descriptor.toString())
