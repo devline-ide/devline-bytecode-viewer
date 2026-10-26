@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "module": "devline-bytecode-viewer",
+  "id": "devline.bytecode",
+  "manifest": "src/extension/extension.json",
+  "ideRepository": "https://github.com/devline-ide/ozl.devline.ide.git",
+  "ideCommit": "10f9c38d7ad4914097bd9d3bac48e709d73e72d5",
+  "distribution": "dlextension",
+  "native": false,
+  "buildPlatforms": [
+    "windows-amd64",
+    "windows-arm64",
+    "linux-amd64",
+    "linux-arm64",
+    "macosx-amd64",
+    "macosx-arm64"
+  ]
+}

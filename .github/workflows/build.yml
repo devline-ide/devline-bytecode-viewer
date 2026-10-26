@@ -1,0 +1,40 @@
+name: Build extension
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Native worker platform (no GitHub-hosted fallback)
+        type: choice
+        default: windows-amd64
+        options:
+          - windows-amd64
+          - windows-arm64
+          - linux-amd64
+          - linux-arm64
+          - macosx-amd64
+          - macosx-arm64
+permissions:
+  contents: read
+concurrency:
+  group: extension-${{ github.ref }}-${{ inputs.platform || 'windows-amd64' }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: [self-hosted, devline-extension, "${{ inputs.platform || 'windows-amd64' }}"]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          clean: true
+      - name: Validate declaration and build release candidate
+        run: python ci/build.py --repository .
+      - name: Upload candidate (not an approved marketplace release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: devline-bytecode-viewer-${{ inputs.platform || 'windows-amd64' }}-${{ github.sha }}
+          path: release-output/*
+          retention-days: 3
+          if-no-files-found: error
