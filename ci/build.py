@@ -62,6 +62,13 @@ def native_platform() -> str:
 
 
 def build(repository: Path, ide_override: Path | None, check_only: bool) -> None:
+    if os.name == "nt":
+        # Process-scoped Git configuration, including nested submodule clones.
+        # No machine-wide registry or user Git setting is changed.
+        config_index = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
+        os.environ[f"GIT_CONFIG_KEY_{config_index}"] = "core.longpaths"
+        os.environ[f"GIT_CONFIG_VALUE_{config_index}"] = "true"
+        os.environ["GIT_CONFIG_COUNT"] = str(config_index + 1)
     declaration = json.loads((repository / "extension-build.json").read_text(encoding="utf-8"))
     actual_platform = native_platform()
     if actual_platform not in declaration["buildPlatforms"]:
@@ -93,6 +100,7 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
                 run(["git", "remote", "set-url", "origin", declaration["ideRepository"]], ide)
             else:
                 run(["git", "clone", "--filter=blob:none", "--no-checkout", declaration["ideRepository"], str(ide)], repository)
+            run(["git", "sparse-checkout", "set", "--no-cone", "/*", "!/docs/audits/"], ide)
             run(["git", "checkout", "--detach", declaration["ideCommit"]], ide)
             run(["git", "submodule", "update", "--init", "--recursive"], ide)
             npm = ["cmd", "/d", "/c", "npm"] if os.name == "nt" else ["npm"]
