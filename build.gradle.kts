@@ -1,5 +1,5 @@
 plugins { kotlin("jvm") }
-version = "0.1.1"
+version = "0.1.2"
 
 dependencies {
     compileOnly(project(":devline-project-settings"))
@@ -7,8 +7,8 @@ dependencies {
     compileOnly(project(":devline-api"))
     compileOnly(project(":devline-compiler"))
     compileOnly("com.google.code.gson:gson:2.13.2")
-    compileOnly("org.develnext.jphp:jphp-core:0.9.3-SNAPSHOT")
-    compileOnly("org.develnext.jphp:jphp-runtime:0.9.3-SNAPSHOT")
+    compileOnly("org.develnext.jphp:jphp-core:0.9.4-ozLTeam-SNAPSHOT")
+    compileOnly("org.develnext.jphp:jphp-runtime:0.9.4-ozLTeam-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.8")
     implementation("org.ow2.asm:asm-util:9.8")
     testImplementation(project(":devline-ide-extensions"))
@@ -17,12 +17,17 @@ dependencies {
     testImplementation(project(":devline-project-settings"))
     testImplementation(project(":devline-kotlin-compiler"))
     testImplementation("com.google.code.gson:gson:2.13.2")
-    testImplementation("org.develnext.jphp:jphp-core:0.9.3-SNAPSHOT")
-    testImplementation("org.develnext.jphp:jphp-runtime:0.9.3-SNAPSHOT")
+    testImplementation("org.develnext.jphp:jphp-core:0.9.4-ozLTeam-SNAPSHOT")
+    testImplementation("org.develnext.jphp:jphp-runtime:0.9.4-ozLTeam-SNAPSHOT")
 }
 
 tasks.processResources {
     from("src/extension/extension.json") { rename { "bytecode-extension.json" } }
+}
+
+tasks.jar {
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }
 
 val panelInstall = tasks.register<Exec>("panelInstall") {
@@ -52,7 +57,7 @@ val packPanel = tasks.register<Exec>("packPanel") {
 val extensionArchive = tasks.register<Zip>("extensionArchive") {
     group = "distribution"
     description = "Builds the independently installable Bytecode Viewer extension."
-    archiveFileName.set("devline-bytecode-viewer-0.1.1.dlextension")
+    archiveFileName.set("devline-bytecode-viewer-0.1.2.dlextension")
     destinationDirectory.set(layout.buildDirectory.dir("extension"))
     from("src/extension/extension.json")
     from(packPanel) { into("web"); include("bytecode.html") }
@@ -91,5 +96,15 @@ tasks.register<JavaExec>("bytecodeOwnershipWorkerCheck") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("devline.bytecode.BytecodeRuntimeCheckKt")
     args("ownership")
+    jvmArgs("-Djava.awt.headless=true", "-Dfile.encoding=UTF-8")
+}
+
+tasks.register<JavaExec>("bytecodeReleaseCheck") {
+    group = "verification"
+    dependsOn(tasks.testClasses, extensionArchive)
+    // Provider classes must come from the archive, never the test/main output.
+    classpath = sourceSets.test.get().output + configurations.testRuntimeClasspath.get()
+    mainClass.set("devline.bytecode.BytecodeReleaseCheckKt")
+    args(extensionArchive.flatMap { it.archiveFile }.get().asFile.absolutePath)
     jvmArgs("-Djava.awt.headless=true", "-Dfile.encoding=UTF-8")
 }

@@ -10,7 +10,9 @@ Analysis starts on demand. File mode reads a saved source/binary; Build mode rea
 
 Branding: `src/main/resources/devline/bytecode/branding/icon.svg` is the vector source; `icon.png` is its transparent 128×128 raster. The manifest embeds those exact PNG bytes. No external icon request is needed during extension discovery.
 
-Version 0.1.1 requires the host's `compiler.php-optimization` capability. PHP
+Version 0.1.2 requires the host's `compiler.php-bytecode-inspection` and
+`compiler.php-optimization` capabilities. Older Studio hosts need an update
+before this package can be installed. PHP
 source analysis respects the project's integer profile and canonical source
 provenance inside an owned worker snapshot. Changing that profile marks an
 existing source result stale. Generated JPHP scalar bodies and guarded entries

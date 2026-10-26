@@ -1,0 +1,4 @@
+{
+  "en": "Independently built Bytecode Viewer package with verified PHP compilation and bytecode inspection. Requires the Studio PHP bytecode inspection SDK capability; older Studio hosts need an update.",
+  "ru": "Отдельный пакет просмотра байткода с проверенной компиляцией PHP и чтением инструкций. Требуется поддержка PHP bytecode inspection SDK в Studio; старую Studio необходимо обновить."
+}

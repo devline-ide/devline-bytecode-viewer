@@ -10,12 +10,13 @@
       "editor.readonly-file-commands",
       "ui.source-navigation",
       "ui.clipboard-write",
-      "compiler.php-optimization"
+      "compiler.php-optimization",
+      "compiler.php-bytecode-inspection"
     ]
   },
   "entryPoint": "devline.bytecode.BytecodeExtension",
   "libraries": [
-    "lib/devline-bytecode-viewer-0.1.1.jar",
+    "lib/devline-bytecode-viewer-0.1.2.jar",
     "lib/asm-9.8.jar",
     "lib/asm-util-9.8.jar",
     "lib/asm-tree-9.8.jar",
@@ -24,7 +25,7 @@
   "extension": {
     "schemaVersion": 1,
     "id": "devline.bytecode",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "name": {
       "en": "Bytecode Viewer",
       "ru": "Просмотр байткода"

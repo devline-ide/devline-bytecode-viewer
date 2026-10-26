@@ -4,9 +4,15 @@
   "id": "devline.bytecode",
   "manifest": "src/extension/extension.json",
   "ideRepository": "https://github.com/devline-ide/ozl.devline.ide.git",
-  "ideCommit": "41015358e4cd1cbfdf655bb91a843a70d402420c",
+  "ideCommit": "49a13cd02a349ef08be6c520e6e1e322aab321a9",
   "distribution": "dlextension",
   "native": false,
+  "verificationTasks": [
+    "bytecodeReaderCheck",
+    "bytecodeRuntimeCheck",
+    "bytecodeOwnershipWorkerCheck",
+    "bytecodeReleaseCheck"
+  ],
   "buildPlatforms": [
     "windows-amd64",
     "windows-arm64",
