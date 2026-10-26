@@ -2,6 +2,10 @@
   "name": "@devline/bytecode-viewer-source",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "vue": "3.5.43",
+    "vue-i18n": "11.4.13"
+  },
   "devDependencies": {
     "@devline/extension-devkit": "file:vendor/devline-extension-devkit-0.1.0.tgz"
   }
