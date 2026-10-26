@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -43,6 +44,49 @@ def prepare_submodules(checkout: Path, mirror: Path | None) -> None:
             prepare_submodules(checkout / relative, source)
         else:
             run(["git", "submodule", "update", "--init", "--recursive", "--", relative], checkout)
+
+
+def extension_sdk_projects(ide: Path, module: str) -> list[str]:
+    """Configure only the extension's source SDK dependency graph in the owned CI checkout.
+
+    The full IDE includes unfinished worktree-only product modules. Independent
+    extensions must not require those unrelated product projects to exist. Keep
+    the original source/build scripts for every actual SDK dependency. The only
+    desktop contribution needed here is its existing npm preparation task.
+    """
+    selected: set[str] = set()
+    pending = [module]
+    while pending:
+        current = pending.pop()
+        if current in selected:
+            continue
+        selected.add(current)
+        if current == "devline-desktop":
+            continue
+        script = ide / current / "build.gradle.kts"
+        if not script.is_file():
+            raise RuntimeError(f"The pinned IDE lacks required SDK source: {current}")
+        source = script.read_text(encoding="utf-8")
+        dependencies = re.findall(r'project\(\s*":(devline-[a-z0-9-]+)"\s*\)', source)
+        dependencies += re.findall(r'":(devline-[a-z0-9-]+):[a-zA-Z]', source)
+        pending.extend(dependencies)
+    settings_path = ide / "settings.gradle.kts"
+    settings = settings_path.read_text(encoding="utf-8")
+
+    def included(match: re.Match) -> str:
+        names = [name for name in re.findall(r'"([a-z0-9-]+)"', match[1]) if name in selected]
+        return 'include(' + ', '.join(json.dumps(name) for name in names) + ')' if names else ''
+
+    settings = re.sub(r'(?m)^include\(([^\n]*)\)', included, settings)
+    if "devline-desktop" in selected:
+        desktop_source = (ide / "devline-desktop/build.gradle.kts").read_text(encoding="utf-8")
+        start = desktop_source.index("val webDirectory =")
+        end = desktop_source.index("val animGraphDirectory =", start)
+        # Reuse the exact committed webInstall implementation, not a no-op task.
+        (ide / "devline-desktop/extension-sdk.gradle.kts").write_text(desktop_source[start:end], encoding="utf-8")
+        settings += '\nproject(":devline-desktop").buildFileName = "extension-sdk.gradle.kts"\n'
+    settings_path.write_text(settings, encoding="utf-8")
+    return sorted(selected)
 
 
 @contextmanager
@@ -107,6 +151,7 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
     with machine_build_lock():
         ide = ide_override.resolve(strict=True) if ide_override else repository / "build/ide-source"
         source_directory = repository
+        sdk_projects = None
         if ide_override is None:
             if ide.exists():
                 # Never reset an old worker checkout; callers use a fresh checkout per job.
@@ -137,6 +182,7 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
             run(["git", "checkout", "--detach", revision], source_directory)
             # The current extension is the candidate; all its peers stay locked.
             bootstrap(ide, peers, locked=False)
+            sdk_projects = extension_sdk_projects(ide, declaration["module"])
         wrapper = ["cmd", "/d", "/c", "gradlew.bat"] if os.name == "nt" else ["sh", "gradlew"]
         task = "jar" if declaration["distribution"] == "builtin" else "extensionArchive"
         run(wrapper + [f":{declaration['module']}:{task}", "--no-daemon", "--max-workers=2"], ide)
@@ -157,6 +203,8 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
                     "ideCommit": declaration["ideCommit"],
                     "sourceCommit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip(),
                     "published": False}
+        if sdk_projects is not None:
+            metadata.update(buildMode="extension-sdk-source", sdkProjects=sdk_projects)
         if task != "jar":
             with zipfile.ZipFile(artifact) as archive:
                 descriptor = json.loads(archive.read("extension.json"))
