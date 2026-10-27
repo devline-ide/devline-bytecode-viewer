@@ -4,7 +4,7 @@
   "id": "devline.bytecode",
   "manifest": "src/extension/extension.json",
   "ideRepository": "https://github.com/devline-ide/ozl.devline.ide.git",
-  "ideCommit": "49a13cd02a349ef08be6c520e6e1e322aab321a9",
+  "ideCommit": "5aa4e4d6c16745cae4530f36cc82dc521479e930",
   "distribution": "dlextension",
   "native": false,
   "verificationTasks": [

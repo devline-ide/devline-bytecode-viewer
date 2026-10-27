@@ -192,7 +192,10 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
                 run(["git", "remote", "set-url", "origin", declaration["ideRepository"]], ide)
             else:
                 run(["git", "clone", "--filter=blob:none", "--no-checkout", declaration["ideRepository"], str(ide)], repository)
-            run(["git", "sparse-checkout", "set", "--no-cone", "/*", "!/docs/audits/"], ide)
+            # Frontends carry compiled UI packages and their own locked tools.
+            # Keeping these sources absent also detects accidental alias regressions.
+            run(["git", "sparse-checkout", "set", "--no-cone", "/*", "!/docs/audits/",
+                 "!/devline-web-shell/", "!/devline-ui-web/"], ide)
             run(["git", "checkout", "--detach", declaration["ideCommit"]], ide)
             prepare_submodules(ide, mirror if mirror is not None and (mirror / ".git").exists() else None)
             peers = Path(native_root) / "peers" if native_root else repository / "build/extension-peers"
@@ -200,8 +203,8 @@ def build(repository: Path, ide_override: Path | None, check_only: bool) -> None
             sys.path.insert(0, str(ide / "tools/extensions"))
             from workspace import bootstrap
             source_directory = peers / declaration["module"]
-            # Vite resolves real source paths. Keep the candidate beside its peer
-            # sources/shared UI, rather than linking to the Actions checkout.
+            # Build the exact candidate inside its declared source workspace.
+            # Deck shared sources remain explicit; frontend UI comes from npm packages.
             revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip()
             run(["git", "clone", "--no-hardlinks", "--no-checkout", str(repository), str(source_directory)], repository)
             run(["git", "checkout", "--detach", revision], source_directory)
