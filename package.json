@@ -2,11 +2,23 @@
   "name": "@devline/bytecode-viewer-source",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit -p web/tsconfig.json",
+    "build": "npm run typecheck && vite build --config web/vite.config.ts"
+  },
   "dependencies": {
+    "@devline/ui-web": "file:vendor/devline-ui-web-0.1.1.tgz",
+    "@devline/animgraph": "file:vendor/devline-animgraph-0.1.0.tgz",
+    "@devline/game-render-web": "file:vendor/devline-game-render-web-0.1.0.tgz",
     "vue": "3.5.43",
     "vue-i18n": "11.4.13"
   },
   "devDependencies": {
-    "@devline/extension-devkit": "file:vendor/devline-extension-devkit-0.1.0.tgz"
+    "@devline/extension-devkit": "file:vendor/devline-extension-devkit-0.1.0.tgz",
+    "@vitejs/plugin-vue": "6.0.9",
+    "sass": "1.105.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.2",
+    "vue-tsc": "3.3.12"
   }
 }

@@ -31,19 +31,22 @@ tasks.jar {
 }
 
 val panelInstall = tasks.register<Exec>("panelInstall") {
-    dependsOn(":devline-ide-extensions:frontendInstall")
     workingDir(projectDir)
     commandLine("node", rootProject.file("tools/extensions/frontend.mjs").absolutePath, "extension", projectDir.absolutePath)
     inputs.files("package.json", "package-lock.json")
     inputs.dir("vendor")
     outputs.dir(layout.projectDirectory.dir("node_modules/@devline/extension-devkit"))
+    outputs.dir(layout.projectDirectory.dir("node_modules/@devline/ui-web"))
+    outputs.dir(layout.projectDirectory.dir("node_modules/@devline/animgraph"))
+    outputs.dir(layout.projectDirectory.dir("node_modules/@devline/game-render-web"))
 }
 val panelBuild = tasks.register<Exec>("panelBuild") {
     dependsOn(panelInstall)
     workingDir(rootProject.projectDir)
     commandLine("node", rootProject.file("tools/extensions/frontend.mjs").absolutePath, "panel", projectDir.absolutePath)
     inputs.dir("web")
-    inputs.dir(rootProject.file("devline-ui-web/src"))
+    inputs.files("package.json", "package-lock.json")
+    inputs.dir("vendor")
     outputs.dir(layout.buildDirectory.dir("panel"))
 }
 val packPanel = tasks.register<Exec>("packPanel") {

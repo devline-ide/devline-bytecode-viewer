@@ -1,5 +1,4 @@
 {
   "extends": "@devline/extension-devkit/tsconfig.json",
-  "compilerOptions": { "baseUrl": ".", "paths": { "@devline/ui-web": ["../../devline-ui-web/src/index.ts"] } },
   "include": ["main.ts", "sdk.ts", "contracts.ts", "format.ts", "useViewer.ts", "*.vue", "locales/*.json"]
 }

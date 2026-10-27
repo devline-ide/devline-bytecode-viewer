@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { UIButton, UIIcon, UIInfoTip, UIInput, UISelect, UITextArea, vUITooltip as vTippy } from '@devline/ui-web'
+import { UIButton, UIIcon, UIInfoTip, UIInput, UISelect, UITextArea, vUITooltip as vTippy } from '@devline/ui-web/controls'
 import { sdk } from './sdk'
 import { classText, debugText, instructionText, modifiers, scalarGenerated, synthetic } from './format'
 import { useViewer } from './useViewer'

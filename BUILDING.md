@@ -15,8 +15,8 @@ No provider classes are supplied by the test parent classpath.
 Keep this checkout at `../ozl.devline.extensions/devline-bytecode-viewer` beside the IDE. From the
 IDE run `python tools/extensions/workspace.py bind --extensions-root ../ozl.devline.extensions`.
 Gradle reads this external project directly; the IDE root contains no extension
-folders or links. Only shared SDK/frontend dependencies are linked here. Shared host/UI,
-audio engine and Deck tools remain IDE-owned dependencies.
+folders or links. UI is consumed through the versioned npm packages described
+below. The host SDK, audio subsystem and Deck tools remain IDE-owned dependencies.
 
 Build a candidate using Python 3.11+, JDK 25, Node 22+ and the existing IDE checkout:
 
@@ -66,6 +66,33 @@ After cloning the SDK checkout, run its documented
 `python tools/extensions/workspace.py bootstrap --extensions-root ../ozl.devline.extensions --locked`.
 Then `node <sdk>/tools/extensions/frontend.mjs panel <this-repository>` type-checks
 and builds the panel without configuring the whole IDE. Gradle's `panelBuild`
-uses that same entry point. Shared UI/Deck sources and shared frontend tools are
-still supplied by the pinned SDK in this migration stage. This does not publish
-or replace an existing immutable extension release.
+uses that same entry point. UI and frontend tools now come from the declared npm
+dependencies described below. Steam Deck still uses the pinned shared Deck build
+inventory. This does not publish or replace an existing immutable extension release.
+
+## UI package dependency
+
+The frontend imports `@devline/ui-web/controls` and
+`@devline/ui-web/controls.css` from a compiled versioned UI package. It does not
+read the IDE's UI source, Sass source tree or TypeScript paths. The complete UI
+root API remains available to other applications; the controls entry keeps
+extension webviews within their existing payload limits. Steam's scrollbar
+mixin is the public `@devline/ui-web/scrollbar.scss` export.
+
+UI and its animation/render companions are frozen tarball dependencies under
+`vendor/`. `vendor/ui-packages.json` records their source revision, SHA-256 and
+npm integrity. Public Vue/Vite/TypeScript/Sass tools are explicit dependencies
+in this repository's lockfile. The original extension web devkit archive is
+unchanged. After a clean clone, build this frontend with:
+
+```sh
+npm ci --ignore-scripts --no-audit --no-fund
+npm run build
+```
+
+Steam Deck additionally needs its existing shared Deck inventory source from the
+pinned SDK; the IDE bootstrap supplies that explicit remaining dependency. The
+other five frontends need no sibling IDE checkout for this npm build. JVM/native
+archive assembly remains the responsibility of `ci/build.py` and the Gradle SDK
+build. No existing marketplace version or immutable Git tag is republished by
+this dependency migration.
