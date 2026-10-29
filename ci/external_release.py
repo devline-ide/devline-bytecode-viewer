@@ -93,8 +93,9 @@ def public_assets(receipt, descriptor, data):
 def publish(output, configuration, api):
     receipt, descriptor, data = checked_output(output, configuration)
     source = api.call("repos/" + configuration["sourceRepository"])
-    if not source["private"] or str(source["id"]) != str(configuration["sourceRepositoryId"]):
-        raise ValueError("Private source repository identity changed")
+    visibility = "private" if source["private"] else "public"
+    if visibility != configuration.get("sourceVisibility", "private") or str(source["id"]) != str(configuration["sourceRepositoryId"]) or str(source["owner"]["id"]) != str(configuration["ownerId"]):
+        raise ValueError("Bound source repository identity or visibility changed")
     repository = configuration["distributionRepository"]
     info = api.call("repos/" + repository)
     if info["private"] or str(info["id"]) != str(configuration["distributionRepositoryId"]) or str(info["owner"]["id"]) != str(configuration["ownerId"]):

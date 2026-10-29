@@ -16,7 +16,7 @@
   },
   "entryPoint": "devline.bytecode.BytecodeExtension",
   "libraries": [
-    "lib/devline-bytecode-viewer-0.1.3.jar",
+    "lib/devline-bytecode-viewer-0.1.4.jar",
     "lib/asm-9.8.jar",
     "lib/asm-util-9.8.jar",
     "lib/asm-tree-9.8.jar",
@@ -25,7 +25,7 @@
   "extension": {
     "schemaVersion": 1,
     "id": "devline.bytecode",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "name": {
       "en": "Bytecode Viewer",
       "ru": "Просмотр байткода"

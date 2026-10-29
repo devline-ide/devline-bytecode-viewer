@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       existing_release:
-        description: Reuse the exact private release bytes for registration (tag ref required)
+        description: Reuse the exact source release bytes for registration (tag ref required)
         type: boolean
         default: false
       platform:
@@ -36,7 +36,7 @@ jobs:
         with:
           persist-credentials: false
           clean: true
-      - name: Restore exact private release for metadata registration
+      - name: Restore exact source release for metadata registration
         if: ${{ inputs.existing_release == true }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -51,11 +51,19 @@ jobs:
           path: release-output/*
           retention-days: 3
           if-no-files-found: error
-      - name: Publish private GitHub Release with verified assets
+      - name: Publish source GitHub Release with verified assets
         if: ${{ startsWith(github.ref, 'refs/tags/v') && inputs.existing_release != true }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python ci/release.py release-output
+      - name: Lease the transient job token to the isolated stage
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.DEVLINE_DELIVERY_MODE == 'stage' }}
+        env:
+          DEVLINE_DELIVERY_MODE: ${{ vars.DEVLINE_DELIVERY_MODE }}
+          DEVLINE_STAGE_RELAY_KEY: ${{ secrets.DEVLINE_STAGE_RELAY_KEY }}
+          DEVLINE_STAGE_RELAY_KNOWN_HOSTS: ${{ vars.DEVLINE_STAGE_RELAY_KNOWN_HOSTS }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python ci/stage_credentials.py activate
       - name: Publish binary-only immutable assets and register with external CI
         if: ${{ startsWith(github.ref, 'refs/tags/v') && (vars.DEVLINE_DELIVERY_MODE == 'stage' || vars.DEVLINE_DELIVERY_MODE == 'external') }}
         env:
@@ -65,6 +73,13 @@ jobs:
           DEVLINE_EXTERNAL_ORIGIN: ${{ vars.DEVLINE_EXTERNAL_ORIGIN }}
           DEVLINE_EXTERNAL_REPOSITORY_LINK_ID: ${{ vars.DEVLINE_EXTERNAL_REPOSITORY_LINK_ID }}
         run: python ci/external_release.py
+      - name: Clear the isolated stage provider lease
+        if: ${{ always() && startsWith(github.ref, 'refs/tags/v') && vars.DEVLINE_DELIVERY_MODE == 'stage' }}
+        env:
+          DEVLINE_DELIVERY_MODE: ${{ vars.DEVLINE_DELIVERY_MODE }}
+          DEVLINE_STAGE_RELAY_KEY: ${{ secrets.DEVLINE_STAGE_RELAY_KEY }}
+          DEVLINE_STAGE_RELAY_KNOWN_HOSTS: ${{ vars.DEVLINE_STAGE_RELAY_KNOWN_HOSTS }}
+        run: python ci/stage_credentials.py clear
       - name: Submit versioned archive to the existing marketplace publisher
         if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.DEVLINE_MARKETPLACE_PUBLISH == 'true' && vars.DEVLINE_DELIVERY_MODE != 'stage' && vars.DEVLINE_DELIVERY_MODE != 'external' }}
         run: node ci/publish.mjs release-output/publication.json release-output/extension.dlextension

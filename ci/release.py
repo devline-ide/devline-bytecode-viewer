@@ -37,8 +37,18 @@ def publish(output: Path) -> None:
         with urllib.request.urlopen(call, timeout=120) as response:
             return json.load(response)
 
-    if not request(f"repos/{repository}")["private"]:
-        raise RuntimeError("First-party proprietary artifacts require a private repository")
+    identity = request(f"repos/{repository}")
+    configuration = json.loads(Path("ci/external-release.json").read_text(encoding="utf-8")) if Path("ci/external-release.json").is_file() else None
+    if configuration:
+        visibility = "private" if identity["private"] else "public"
+        if repository != configuration["sourceRepository"] or str(identity["id"]) != str(configuration["sourceRepositoryId"]) or visibility != configuration.get("sourceVisibility", "private"):
+            raise RuntimeError("Source repository identity or visibility differs from its binding")
+    elif not identity["private"]:
+        raise RuntimeError("Public source publication requires an explicit repository binding")
+    if not identity["private"]:
+        # Public source receipts must not expose private SDK checkout provenance.
+        public_fields = {"schemaVersion", "extensionId", "version", "channel", "platform", "buildPlatform", "distribution", "sha256", "size", "sourceCommit", "published", "apiVersion", "compatibility", "artifact"}
+        metadata_bytes = (json.dumps({key: value for key, value in metadata.items() if key in public_fields}, indent=2) + "\n").encode("utf-8")
     try:
         release = request(f"repos/{repository}/releases/tags/{urllib.parse.quote(tag)}")
         if request(f"repos/{repository}/commits/{urllib.parse.quote(tag)}")["sha"] != metadata["sourceCommit"]:
@@ -50,7 +60,7 @@ def publish(output: Path) -> None:
             "tag_name": tag, "target_commitish": metadata["sourceCommit"],
             "name": metadata["extensionId"] + " " + metadata["version"],
             "draft": False, "prerelease": metadata["channel"] == "preview",
-            "body": "Verified private build.\n\nBuild: https://github.com/" + repository +
+            "body": "Verified extension build.\n\nBuild: https://github.com/" + repository +
                     "/actions/runs/" + os.environ["GITHUB_RUN_ID"] +
                     "\n\nPublic marketplace approval is a separate publication step.",
         })

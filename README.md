@@ -1,3 +1,8 @@
+## Community development
+
+Public extension sources: Apache-2.0. Build and contribute without private IDE access:
+see [CONTRIBUTING.md](CONTRIBUTING.md) and the pinned [SDK](sdk.lock.json).
+
 # Bytecode Viewer
 
 Bundled, enabled extension `devline.bytecode`, API 6, RPC namespace `bytecode`. The inspect command accepts PHP, PHB, class, JAR, Kotlin and Java files. Its viewer and Settings > Extensions page are declared by the extension, with RU/EN metadata and an embedded PNG icon generated from the SVG branding source.

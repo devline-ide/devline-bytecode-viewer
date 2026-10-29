@@ -8,5 +8,6 @@
   "ownerId": 328436105,
   "platforms": [
     "universal"
-  ]
+  ],
+  "sourceVisibility": "public"
 }
