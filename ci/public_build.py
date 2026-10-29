@@ -55,7 +55,7 @@ def main():
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     home = sdk(root, args.sdk_archive)
-    wrapper = ["cmd", "/d", "/c", "gradlew.bat"] if os.name == "nt" else ["sh", "gradlew"]
+    wrapper = ["cmd", "/d", "/c", "gradlew.bat"] if os.name == "nt" else ["./gradlew"]
     command = wrapper + ["-p", "standalone", "-PdevlineSdkDir=" + str(home), "--no-daemon", "--max-workers=2"] + args.tasks
     subprocess.run(command, cwd=root, check=True)
     if "extensionArchive" in args.tasks:
