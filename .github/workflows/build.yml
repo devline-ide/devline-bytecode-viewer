@@ -4,6 +4,10 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
+      existing_release:
+        description: Reuse the exact private release bytes for registration (tag ref required)
+        type: boolean
+        default: false
       platform:
         description: Native worker platform (no GitHub-hosted fallback)
         type: choice
@@ -32,7 +36,13 @@ jobs:
         with:
           persist-credentials: false
           clean: true
+      - name: Restore exact private release for metadata registration
+        if: ${{ inputs.existing_release == true }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python ci/external_release.py --restore
       - name: Validate declaration and build release candidate
+        if: ${{ inputs.existing_release != true }}
         run: python ci/build.py --repository .
       - name: Upload candidate (not an approved marketplace release)
         uses: actions/upload-artifact@v4
@@ -42,10 +52,19 @@ jobs:
           retention-days: 3
           if-no-files-found: error
       - name: Publish private GitHub Release with verified assets
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && inputs.existing_release != true }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python ci/release.py release-output
-      - name: Submit versioned archive to the configured marketplace publisher
-        if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.DEVLINE_MARKETPLACE_PUBLISH == 'true' && true }}
+      - name: Publish binary-only immutable assets and register with external CI
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && (vars.DEVLINE_DELIVERY_MODE == 'stage' || vars.DEVLINE_DELIVERY_MODE == 'external') }}
+        env:
+          DEVLINE_DELIVERY_MODE: ${{ vars.DEVLINE_DELIVERY_MODE }}
+          DEVLINE_STAGE_ORIGIN: ${{ vars.DEVLINE_STAGE_ORIGIN }}
+          DEVLINE_STAGE_REPOSITORY_LINK_ID: ${{ vars.DEVLINE_STAGE_REPOSITORY_LINK_ID }}
+          DEVLINE_EXTERNAL_ORIGIN: ${{ vars.DEVLINE_EXTERNAL_ORIGIN }}
+          DEVLINE_EXTERNAL_REPOSITORY_LINK_ID: ${{ vars.DEVLINE_EXTERNAL_REPOSITORY_LINK_ID }}
+        run: python ci/external_release.py
+      - name: Submit versioned archive to the existing marketplace publisher
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.DEVLINE_MARKETPLACE_PUBLISH == 'true' && vars.DEVLINE_DELIVERY_MODE != 'stage' && vars.DEVLINE_DELIVERY_MODE != 'external' }}
         run: node ci/publish.mjs release-output/publication.json release-output/extension.dlextension

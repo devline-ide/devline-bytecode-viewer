@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "itemId": "devline.bytecode",
+  "sourceRepository": "devline-ide/devline-bytecode-viewer",
+  "sourceRepositoryId": 1434835522,
+  "distributionRepository": "devline-ide/devline-bytecode-releases",
+  "distributionRepositoryId": 1437892573,
+  "ownerId": 328436105,
+  "platforms": [
+    "universal"
+  ]
+}

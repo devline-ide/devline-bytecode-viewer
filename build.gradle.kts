@@ -1,5 +1,5 @@
 plugins { kotlin("jvm") }
-version = "0.1.2"
+version = "0.1.3"
 
 dependencies {
     compileOnly(project(":devline-project-settings"))
@@ -60,7 +60,7 @@ val packPanel = tasks.register<Exec>("packPanel") {
 val extensionArchive = tasks.register<Zip>("extensionArchive") {
     group = "distribution"
     description = "Builds the independently installable Bytecode Viewer extension."
-    archiveFileName.set("devline-bytecode-viewer-0.1.2.dlextension")
+    archiveFileName.set("devline-bytecode-viewer-0.1.3.dlextension")
     destinationDirectory.set(layout.buildDirectory.dir("extension"))
     from("src/extension/extension.json")
     from(packPanel) { into("web"); include("bytecode.html") }

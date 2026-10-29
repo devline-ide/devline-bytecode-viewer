@@ -55,7 +55,7 @@ fun main(args: Array<String>) {
         IdeExtensions(profile, context(profile), emptyList()).use { registry ->
             registry.setEnabled(id, true, registry.overview().version)
             val item = registry.overview().extensions.single()
-            check(item.manifest.version == "0.1.2" && item.compatibility?.compatible == true)
+            check(item.manifest.version == "0.1.3" && item.compatibility?.compatible == true)
             check(item.manifest.commands.single().let { it.readonly == true && it.saveBeforeRun == false })
             fun call(method: String, values: JsonObject = JsonObject()) = registry.request("bytecode.$method", values).asJsonObject
             check(call("state")["projectFile"].asString == descriptor.toString())
